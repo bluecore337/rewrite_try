@@ -28,8 +28,6 @@ Tracker::Tracker(const std::string & config_path, Solver & solver)
   max_temp_lost_count_ = yaml["max_temp_lost_count"].as<int>();
   outpost_max_temp_lost_count_ = yaml["outpost_max_temp_lost_count"].as<int>();
   normal_temp_lost_count_ = max_temp_lost_count_;
-
-  tools::logger()->debug("[Tracker] init complete!");
 }
 
 std::string Tracker::state() const { return state_; }

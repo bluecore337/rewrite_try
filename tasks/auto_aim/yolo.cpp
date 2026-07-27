@@ -30,8 +30,6 @@ YOLO::YOLO(const std::string & config_path, bool debug, const std::string & devi
   else {
     throw std::runtime_error("Unknown yolo name: " + yolo_name + "!");
   }
-
-  tools::logger()->debug("[Yolo] init complete!");
 }
 
 std::list<Armor> YOLO::detect(const cv::Mat & img, int frame_count)

@@ -161,7 +161,7 @@ void HikRobot::capture_stop()
   if (capture_thread_.joinable()) capture_thread_.join();
 
   unsigned int ret;
-
+  if (handle_ == nullptr) return ;
   ret = MV_CC_StopGrabbing(handle_);
   if (ret != MV_OK) {
     tools::logger()->warn("MV_CC_StopGrabbing failed: {:#x}", ret);

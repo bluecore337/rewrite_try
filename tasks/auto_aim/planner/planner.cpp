@@ -52,8 +52,6 @@ Planner::Planner(const std::string & config_path)
 
   setup_yaw_solver(config_path);
   setup_pitch_solver(config_path);
-
-  tools::logger()->debug("[Planner] init complete!");
 }
 
 Plan Planner::plan(Target target, double bullet_speed)
