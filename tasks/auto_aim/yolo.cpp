@@ -6,6 +6,8 @@
 #include "yolos/yolov5.hpp"
 #include "yolos/yolov8.hpp"
 
+#include "tools/logger.hpp"
+
 namespace auto_aim
 {
 YOLO::YOLO(const std::string & config_path, bool debug, const std::string & device_key)
@@ -28,6 +30,8 @@ YOLO::YOLO(const std::string & config_path, bool debug, const std::string & devi
   else {
     throw std::runtime_error("Unknown yolo name: " + yolo_name + "!");
   }
+
+  tools::logger()->debug("[Yolo] init complete!");
 }
 
 std::list<Armor> YOLO::detect(const cv::Mat & img, int frame_count)
