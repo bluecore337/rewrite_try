@@ -391,7 +391,7 @@ std::optional<PowerRune> Buff_Detector::detect_multi(cv::Mat & bgr_img)
 {
   auto now = std::chrono::steady_clock::now();
   const cv::Mat color_reference = bgr_img.clone();
-  std::vector<YOLO11_BUFF::Object> results = MODE_.get_multicandidateboxes(bgr_img);
+  std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
   results = filterByConfiguredColor(color_reference, results);
   std::cout << "[detect_multi] get_multicandidateboxes 返回 " << results.size() << " 个结果"
             << std::endl;
@@ -429,7 +429,7 @@ std::optional<PowerRune> Buff_Detector::detect(cv::Mat & bgr_img)
 {
   auto now = std::chrono::steady_clock::now();
   const cv::Mat color_reference = bgr_img.clone();
-  std::vector<YOLO11_BUFF::Object> results = MODE_.get_multicandidateboxes(bgr_img);
+  std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
   results = filterByConfiguredColor(color_reference, results);
   updateDetectionInfo(results);
   if (results.empty()) {
@@ -478,7 +478,7 @@ std::optional<PowerRune> Buff_Detector::detect_24(cv::Mat & bgr_img)
 {
   auto now = std::chrono::steady_clock::now();
   const cv::Mat color_reference = bgr_img.clone();
-  std::vector<YOLO11_BUFF::Object> results = MODE_.get_multicandidateboxes(bgr_img);
+  std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
   results = filterByConfiguredColor(color_reference, results);
   if (results.empty()) return std::nullopt;
   std::vector<FanBlade> fanblades;
@@ -519,7 +519,7 @@ std::optional<PowerRune> Buff_Detector::detect_24(cv::Mat & bgr_img)
 std::optional<PowerRune> Buff_Detector::detect_debug(cv::Mat & bgr_img, cv::Point2f v)
 {
   const cv::Mat color_reference = bgr_img.clone();
-  std::vector<YOLO11_BUFF::Object> results = MODE_.get_multicandidateboxes(bgr_img);
+  std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
   results = filterByConfiguredColor(color_reference, results);
   if (results.empty()) return std::nullopt;
   std::vector<FanBlade> fanblades_t;
@@ -559,7 +559,7 @@ void Buff_Detector::updateDetectionInfo(const std::vector<YOLO11_BUFF::Object> &
   std::vector<bool> prev_used(last_detection_centers_.size(), false);
   for (size_t i = 0; i < results.size(); ++i) {
     const auto & result = results[i];
-    confidences.push_back(result.prob);
+    confidences.push_back(result.confidence);
     bboxes.push_back(result.rect);
     centers.push_back(result.kpt[4]);
     float best_distance = std::numeric_limits<float>::max();
@@ -606,7 +606,7 @@ void Buff_Detector::fillBoardMetadata(
     }
     if (best_result < 0) continue;
     used[best_result] = true;
-    powerrune.board_confidences[board_index] = results[best_result].prob;
+    powerrune.board_confidences[board_index] = results[best_result].confidence;
     if (best_result < static_cast<int>(target_track_counts_.size())) {
       powerrune.board_tracked_frames[board_index] = target_track_counts_[best_result];
     }

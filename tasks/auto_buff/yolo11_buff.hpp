@@ -1,73 +1,63 @@
-﻿#ifndef AUTO_BUFF__YOLO11_BUFF_HPP
+#ifndef AUTO_BUFF__YOLO11_BUFF_HPP
 #define AUTO_BUFF__YOLO11_BUFF_HPP
-#include <yaml-cpp/yaml.h>
 
-#include <filesystem>
 #include <optional>
+
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
 #include <openvino/openvino.hpp>
 
-#include "tools/logger.hpp"
+namespace auto_buff {
 
-namespace auto_buff
-{
-const std::vector<std::string> class_names = {"buff", "r"};
+class YOLO11_BUFF {
+    public:
+        struct Object { // YOLO11模型识别的物体
+            cv::Rect_<float> rect; // 矩形框
+            float confidence = 0.0f; // 置信度
+            std::vector<cv::Point2f> kpt; // 关键点
+            // 目前，我们的模型关键点有6个：
+            // 第一个关键点在靶子圆上、扇叶最外侧，
+            // 第二、三、四关键点与一在靶子圆形处逆时针排列。
+            // 第五个在圆中心。
+            // 第六个在靶子尾部。
+        };
 
-class YOLO11_BUFF
-{
-public:
-  struct Object
-  {
-    cv::Rect_<float> rect;
-    int label = 0;
-    float prob = 0.0F;
-    std::vector<cv::Point2f> kpt;
-  };
+        YOLO11_BUFF(const std::string & config_path, const std::string & model_key);
+        std::vector<Object> get_candidateboxes(cv::Mat & image);
 
-  YOLO11_BUFF(const std::string & config);
-  YOLO11_BUFF(const std::string & config, const std::string & model_key);
-  std::vector<Object> get_multicandidateboxes(cv::Mat & image);
-  std::vector<Object> get_onecandidatebox(cv::Mat & image);
+    private:
+        struct OutputLayout {
+            int channels = 0;
+            int candidates = 0;
+            bool channel_first = true;// 是否通道优先
+                // 若通道优先，则数据格式为：先存通道0 的所有候选框数据，再存通道1 的所有候选框数据……以此类推。
+                // 否则是候选框优先，数据格式为：先存候选框0 的所有通道数据，再存候选框1 的所有通道数据……以此类推。
+            int keypoint_stride = 0; // 单个关键点
+            const char * format_name = "unknown";
+        };
+        //=== openvino初始化 ===
+        ov::Core core;
+        std::shared_ptr<ov::Model> model;
+        ov::CompiledModel compiled_model;
+        ov::InferRequest infer_request_;
+        ov::Tensor input_tensor_;
+        std::string model_path_;
 
-private:
-  struct OutputLayout
-  {
-    int channels = 0;
-    int candidates = 0;
-    bool channel_first = true;
-    int keypoint_stride = 0;
-    const char * format_name = "unknown";
-  };
+        bool output_layout_logged_ = false;
+        const int NUM_POINTS = 6;
 
-  struct Candidate
-  {
-    cv::Rect rect;
-    float confidence = 0.0F;
-    std::vector<cv::Point2f> keypoints;
-  };
+        std::string get_mode_path(const YAML::Node & yaml, const std::string & model_key); // 获取模型路径
 
-  ov::Core core;
-  std::shared_ptr<ov::Model> model;
-  ov::CompiledModel compiled_model;
-  ov::InferRequest infer_request;
-  ov::Tensor input_tensor;
-  std::string model_path_;
-  bool output_layout_logged_ = false;
-  const int NUM_POINTS = 6;
+        void convert(const cv::Mat & input, cv::Mat & output); // 对图像归一化+BRG转RGB
+        float FillInputTensor(const cv::Mat & input_image); // 缩放图片、向输入层写入，并返回缩放比例
 
-  void loadModel(const std::string & model_path);
-  static std::string resolveModelPath(
-    const YAML::Node & yaml, const std::string & model_key);
-  std::optional<OutputLayout> detectOutputLayout(const ov::Shape & shape);
-  float outputAt(
-    const float * data, const OutputLayout & layout, int channel, int candidate) const;
-  std::vector<Candidate> parseCandidates(const ov::Tensor & output, float factor);
-  void drawObject(cv::Mat & image, const Object & obj, const cv::Scalar & point_color) const;
-  void convert(
-    const cv::Mat & input, cv::Mat & output, const bool normalize, const bool exchangeRB) const;
-  float fill_tensor_data_image(ov::Tensor & input_tensor, const cv::Mat & input_image) const;
-  void printInputAndOutputsInfo(const ov::Model & network);
-  void save(const std::string & programName, const cv::Mat & image);
+        std::optional<OutputLayout> CheckOutputLayout(const ov::Shape & shape); // 检查并返回输出层形状
+        float outputAt(const float * data, const OutputLayout & layout, int channel, int candidate) const;
+        std::vector<Object> GetCandidates(const ov::Tensor & output, float factor); // 读取输出层数据以获取候选目标
+
+        void drawObject(cv::Mat & image, const Object & obj, const cv::Scalar & point_color) const; // 画图
 };
-}  // namespace auto_buff
-#endif
+
+}
+
+#endif  // AUTO_BUFF__YOLO11_BUFF_HPP
