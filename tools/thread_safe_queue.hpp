@@ -15,9 +15,10 @@ template <typename T, bool pop_when_full = false>
 // 将 pop_when_full 放在此处不占用内存，且可以在编译期确定是否需要 pop
 // 或许我们可以考虑将 max_size_ 也放在模板参数中，这样可以在编译期确定队列的最大长度，避免运行时的开销
 
-class ThreadSafeQueue { // 线程安全的队列。仅在有数据时才能读取数据，否则等待数据进入
+/* 线程安全的队列。仅在有数据时才能读取数据，否则等待数据进入 */
+class ThreadSafeQueue {
     public:
-        ThreadSafeQueue(size_t max_size, std::function<void(void)> full_handler = nullptr)
+        ThreadSafeQueue(size_t max_size, std::function<void(void)> full_handler = [] {})
             : max_size_(max_size), full_handler_(full_handler) {}
 
         void push(const T & value) {

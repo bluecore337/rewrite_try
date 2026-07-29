@@ -70,8 +70,6 @@ int main(int argc, char * argv[])
   auto_aim::YOLO yolo(config_path);
   auto_aim::Solver aim_solver(config_path);
   auto_aim::Tracker tracker(config_path, aim_solver);
-  // auto_aim::Aimer aimer(config_path);
-  // auto_aim::Shooter shooter(config_path);
   auto_aim::Planner planner(config_path);
 
   auto_buff::Buff_Detector small_buff_detector(config_path, "small_buff_model");
