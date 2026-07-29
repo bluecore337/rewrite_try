@@ -17,7 +17,7 @@ namespace io
 {
 //=== 初始化 ===
 OVGimbal::OVGimbal(const std::string & config_path){
-    // 读取串口姿态固定时间补偿
+    //--- 读取串口姿态固定时间补偿 ---
     try {
         auto yaml = YAML::LoadFile(config_path);
         double offset_s = -0.001;
@@ -33,7 +33,7 @@ OVGimbal::OVGimbal(const std::string & config_path){
     // tools::logger()->info(
     // "[OVGimbal] timing offset={:.2f}ms", static_cast<double>(imu_quiry_offset_.count()) / 1000.0);
 
-    // 打开串口
+    //--- 打开串口 ---
     try {
         serial_.setPort("/dev/ttyACM0");
         serial_.setBaudrate(115200);
@@ -48,7 +48,7 @@ OVGimbal::OVGimbal(const std::string & config_path){
         
     read_thread_ = std::thread(&OVGimbal::receiving_date, this); // 打开接收数据的线程
 
-    // 读取首批imu数据
+    //--- 读取首批imu数据 ---
     tools::logger()->info("[OVGimbal] Waiting for IMU...");
     if (queue_.pop(data_ahead_, std::chrono::milliseconds(800)) &&
         queue_.pop(data_behind_, std::chrono::milliseconds(800))){

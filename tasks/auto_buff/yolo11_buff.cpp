@@ -51,7 +51,7 @@ std::vector<YOLO11_BUFF::Object> YOLO11_BUFF::get_candidateboxes(cv::Mat & image
         return std::vector<YOLO11_BUFF::Object>();  
     }
     const int64 start = cv::getTickCount();
-    //--- 推理 ---
+    //--- 写入、推理、获取输出层 ---
     const float scale_factor = FillInputTensor(image);
     infer_request_.infer();
     const ov::Tensor output = infer_request_.get_output_tensor();
@@ -70,12 +70,12 @@ std::vector<YOLO11_BUFF::Object> YOLO11_BUFF::get_candidateboxes(cv::Mat & image
     cv::dnn::NMSBoxes(boxes, confidences, ConfidenceThreshold, IouThreshold, indexes);
         // 筛选出置信度大于ConfidenceThreshold的框，并根据交并比去除高度重合的框。
 
-    //---  ---
+    //--- 写入结果并返回 ---
     std::vector<Object> object_result;
     for (size_t i = 0; i < indexes.size(); ++i) {
         const int index = indexes[i];
         object_result.push_back(candidates[index]);
-        drawObject(image, candidates[index], cv::Scalar(255, 0, 0));
+        drawObject(image, candidates[index], cv::Scalar(255, 0, 0)); // 画图
     }
     const float t = (cv::getTickCount() - start) / static_cast<float>(cv::getTickFrequency());
     cv::putText(image, cv::format("FPS: %.2f", 1.0 / t), cv::Point(20, 40),
