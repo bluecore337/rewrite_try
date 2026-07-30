@@ -105,74 +105,6 @@ std::vector<YOLO11_BUFF::Object> Buff_Detector::filterByConfiguredColor(
   return filtered;
 }
 
-RingDetector::RingDetector() : max_radius_mm_(150.0), outer_ring_(1), inner_ring_(10), focal_length_(800.0) {}
-
-void RingDetector::setParams(double max_radius_mm, int outer_ring, int inner_ring)
-{
-  max_radius_mm_ = max_radius_mm;
-  outer_ring_ = outer_ring;
-  inner_ring_ = inner_ring;
-}
-
-void RingDetector::setFocalLength(double focal_length)
-{
-  focal_length_ = focal_length;
-}
-
-double RingDetector::pixelToMm(double pixel_dist, double distance_m) const
-{
-  return pixel_dist * distance_m * 1000.0 / focal_length_;
-}
-
-int RingDetector::detectRing(
-  const cv::Point2f & hit_point, const cv::Point2f & center, double distance_to_target) const
-{
-  double pixel_dist = cv::norm(hit_point - center);
-  double radius_mm = pixelToMm(pixel_dist, distance_to_target);
-  radius_mm = std::clamp(radius_mm, 0.0, max_radius_mm_);
-
-  double t = radius_mm / max_radius_mm_;
-  double ring_float;
-
-  if (inner_ring_ > outer_ring_) {
-    ring_float = inner_ring_ - t * (inner_ring_ - outer_ring_);
-  } else {
-    ring_float = outer_ring_ + t * (inner_ring_ - outer_ring_);
-  }
-
-  int ring = static_cast<int>(ring_float + 0.5);
-  return std::clamp(ring, 1, 10);
-}
-
-ArmStateDetector::ArmStateDetector() : brightness_threshold_(100), use_color_detection_(false) {}
-
-void ArmStateDetector::setParams(int brightness_threshold, bool use_color_detection)
-{
-  brightness_threshold_ = brightness_threshold;
-  use_color_detection_ = use_color_detection;
-}
-
-int ArmStateDetector::detectActivatedArms(const std::vector<FanBlade> & fanblades) const
-{
-  int count = 0;
-  for (const auto & blade : fanblades) {
-    if (blade.type == _light) {
-      count++;
-    }
-  }
-  return count;
-}
-
-int ArmStateDetector::getCurrentTargetArmIndex(const std::vector<FanBlade> & fanblades) const
-{
-  for (size_t i = 0; i < fanblades.size(); i++) {
-    if (fanblades[i].type == _light || fanblades[i].type == _target) {
-      return static_cast<int>(i);
-    }
-  }
-  return 0;
-}
-
 Buff_Detector::Buff_Detector(const std::string & config) : Buff_Detector(config, "model") {}
 
 Buff_Detector::Buff_Detector(const std::string & config, const std::string & model_key)
@@ -180,13 +112,6 @@ Buff_Detector::Buff_Detector(const std::string & config, const std::string & mod
     lose_(0),
     MODE_(config, model_key),
     energy_type_(EnergyType::SMALL),
-    fx_(800.0),
-    fy_(800.0),
-    cx_(320.0),
-    cy_(240.0),
-    max_radius_mm_(150.0),
-    outer_ring_(1),
-    inner_ring_(10),
     lastlen_(0.0),
     configured_energy_color_(BuffColor::RED),
     target_energy_color_(BuffColor::BLUE),
@@ -218,43 +143,12 @@ Buff_Detector::Buff_Detector(const std::string & config, const std::string & mod
         colorName(configured_energy_color_), colorName(target_energy_color_));
     }
 
-    if (yaml["ring_mapping"]) {
-      max_radius_mm_ = yaml["ring_mapping"]["max_radius_mm"].as<double>(150.0);
-      outer_ring_ = yaml["ring_mapping"]["outer_ring"].as<int>(1);
-      inner_ring_ = yaml["ring_mapping"]["inner_ring"].as<int>(10);
-    }
-
-    if (yaml["camera_matrix"]) {
-      auto camera_data = yaml["camera_matrix"].as<std::vector<double>>();
-      if (camera_data.size() >= 4) {
-        fx_ = camera_data[0];
-        fy_ = camera_data[4];
-        cx_ = camera_data[2];
-        cy_ = camera_data[5];
-      }
-    }
-
-    if (yaml["arm_detection"]) {
-      int brightness = yaml["arm_detection"]["brightness_threshold"].as<int>(100);
-      bool use_color = yaml["arm_detection"]["use_color_detection"].as<bool>(false);
-      arm_detector_.setParams(brightness, use_color);
-    }
   } catch (const std::exception & e) {
     tools::logger()->warn("[Buff_Detector] 加载配置文件失败: {}", e.what());
   }
 
-  ring_detector_.setParams(max_radius_mm_, outer_ring_, inner_ring_);
-  ring_detector_.setFocalLength((fx_ + fy_) / 2.0);
 }
 
-void Buff_Detector::setCameraParams(double fx, double fy, double cx, double cy)
-{
-  fx_ = fx;
-  fy_ = fy;
-  cx_ = cx;
-  cy_ = cy;
-  ring_detector_.setFocalLength((fx + fy) / 2.0);
-}
 
 void Buff_Detector::setEnergyType(EnergyType type)
 {
@@ -316,18 +210,6 @@ cv::Point2f Buff_Detector::get_r_center(std::vector<FanBlade> & fanblades, cv::M
   return r_center;
 }
 
-int Buff_Detector::detectHitRing(const PowerRune & powerrune, double distance_to_target) const
-{
-  if (powerrune.fanblades.empty()) return 0;
-  const auto & blade = powerrune.target();
-  return ring_detector_.detectRing(blade.center, powerrune.r_center, distance_to_target);
-}
-
-int Buff_Detector::detectActivatedArms(const std::vector<FanBlade> & fanblades) const
-{
-  return arm_detector_.detectActivatedArms(fanblades);
-}
-
 PowerRune Buff_Detector::constructPredictedPowerRune()
 {
   PowerRune predicted;
@@ -355,12 +237,6 @@ PowerRune Buff_Detector::constructPredictedPowerRune()
   return predicted;
 }
 
-std::optional<PowerRune> Buff_Detector::getPredictedPowerRune() const
-{
-  if (prediction_valid_) return std::optional<PowerRune>(predicted_powerrune_);
-  return std::nullopt;
-}
-
 void Buff_Detector::handle_lose()
 {
   lose_++;
@@ -385,44 +261,6 @@ void Buff_Detector::handle_lose()
     prediction_valid_ = false;
     tools::logger()->debug("[Detector] 临时丢失，丢失{}帧", lose_);
   }
-}
-
-std::optional<PowerRune> Buff_Detector::detect_multi(cv::Mat & bgr_img)
-{
-  auto now = std::chrono::steady_clock::now();
-  const cv::Mat color_reference = bgr_img.clone();
-  std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
-  results = filterByConfiguredColor(color_reference, results);
-  std::cout << "[detect_multi] get_multicandidateboxes 返回 " << results.size() << " 个结果"
-            << std::endl;
-  if (results.empty()) return std::nullopt;
-  lose_ = 0;
-  status_ = TrackStatus::TRACK;
-  last_timestamp_ = now;
-  prediction_valid_ = false;
-  std::vector<FanBlade> fanblades;
-  for (const auto & result : results) {
-    fanblades.emplace_back(FanBlade(result.kpt, result.kpt[4], _light));
-  }
-  auto r_center = get_r_center(fanblades, bgr_img);
-  PowerRune powerrune(fanblades, r_center, last_powerrune_);
-  if (powerrune.is_unsolve()) return std::nullopt;
-  double distance_to_target = 5.0;
-  if (last_powerrune_.has_value()) distance_to_target = last_powerrune_.value().ypd_in_world[2];
-  for (int index : powerrune.getLitBoardIndices()) {
-    powerrune.setBoardHitRing(index, ring_detector_.detectRing(
-                                     powerrune.fanblades[index].center, powerrune.r_center,
-                                     distance_to_target));
-  }
-  fillBoardMetadata(powerrune, results);
-  powerrune.hit_ring = powerrune.getHitRingForBoard(powerrune.selectedBoardIndex());
-  powerrune.activated_arms = detectActivatedArms(fanblades);
-  powerrune.energy_type = energy_type_;
-  powerrune.timestamp = cv::getTickCount() / cv::getTickFrequency();
-  std::optional<PowerRune> P;
-  P.emplace(powerrune);
-  last_powerrune_ = P;
-  return P;
 }
 
 std::optional<PowerRune> Buff_Detector::detect(cv::Mat & bgr_img)
@@ -459,94 +297,16 @@ std::optional<PowerRune> Buff_Detector::detect(cv::Mat & bgr_img)
   double distance_to_target = 5.0;
   if (last_powerrune_.has_value()) distance_to_target = last_powerrune_.value().ypd_in_world[2];
   for (int index : powerrune.getLitBoardIndices()) {
-    powerrune.setBoardHitRing(index, ring_detector_.detectRing(
-                                     powerrune.fanblades[index].center, powerrune.r_center,
-                                     distance_to_target));
+    powerrune.setBoardHitRing(index, 10);
   }
   fillBoardMetadata(powerrune, results);
   powerrune.hit_ring = powerrune.getHitRingForBoard(powerrune.selectedBoardIndex());
-  powerrune.activated_arms = detectActivatedArms(fanblades);
+  powerrune.activated_arms = fanblades.size();
   powerrune.energy_type = energy_type_;
   powerrune.timestamp = cv::getTickCount() / cv::getTickFrequency();
   std::optional<PowerRune> P;
   P.emplace(powerrune);
   last_powerrune_ = P;
-  return P;
-}
-
-std::optional<PowerRune> Buff_Detector::detect_24(cv::Mat & bgr_img)
-{
-  auto now = std::chrono::steady_clock::now();
-  const cv::Mat color_reference = bgr_img.clone();
-  std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
-  results = filterByConfiguredColor(color_reference, results);
-  if (results.empty()) return std::nullopt;
-  std::vector<FanBlade> fanblades;
-  for (auto & result : results) {
-    fanblades.emplace_back(FanBlade(result.kpt, result.kpt[4], _light));
-  }
-  auto r_center = get_r_center(fanblades, bgr_img);
-  PowerRune powerrune(fanblades, r_center, last_powerrune_);
-  if (powerrune.is_unsolve()) {
-    handle_lose();
-    if (status_ == TrackStatus::PREDICT_TRACK && prediction_valid_) {
-      return std::optional<PowerRune>(predicted_powerrune_);
-    }
-    return std::nullopt;
-  }
-  lose_ = 0;
-  status_ = TrackStatus::TRACK;
-  last_timestamp_ = now;
-  prediction_valid_ = false;
-  double distance_to_target = 5.0;
-  if (last_powerrune_.has_value()) distance_to_target = last_powerrune_.value().ypd_in_world[2];
-  for (int index : powerrune.getLitBoardIndices()) {
-    powerrune.setBoardHitRing(index, ring_detector_.detectRing(
-                                     powerrune.fanblades[index].center, powerrune.r_center,
-                                     distance_to_target));
-  }
-  fillBoardMetadata(powerrune, results);
-  powerrune.hit_ring = powerrune.getHitRingForBoard(powerrune.selectedBoardIndex());
-  powerrune.activated_arms = detectActivatedArms(fanblades);
-  powerrune.energy_type = energy_type_;
-  powerrune.timestamp = cv::getTickCount() / cv::getTickFrequency();
-  std::optional<PowerRune> P;
-  P.emplace(powerrune);
-  last_powerrune_ = P;
-  return P;
-}
-
-std::optional<PowerRune> Buff_Detector::detect_debug(cv::Mat & bgr_img, cv::Point2f v)
-{
-  const cv::Mat color_reference = bgr_img.clone();
-  std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
-  results = filterByConfiguredColor(color_reference, results);
-  if (results.empty()) return std::nullopt;
-  std::vector<FanBlade> fanblades_t;
-  for (auto & result : results) {
-    fanblades_t.emplace_back(FanBlade(result.kpt, result.kpt[4], _light));
-  }
-  auto r_center = get_r_center(fanblades_t, bgr_img);
-  std::vector<FanBlade> fanblades;
-  for (auto & fanblade : fanblades_t) {
-    if (cv::norm((fanblade.center - r_center) - v) < 10 || results.size() == 1) {
-      fanblades.emplace_back(fanblade);
-      break;
-    }
-  }
-  if (fanblades.empty()) return std::nullopt;
-  PowerRune powerrune(fanblades, r_center, std::nullopt);
-  for (int index : powerrune.getLitBoardIndices()) {
-    powerrune.setBoardHitRing(index, ring_detector_.detectRing(
-                                     powerrune.fanblades[index].center, powerrune.r_center, 5.0));
-  }
-  fillBoardMetadata(powerrune, results);
-  powerrune.hit_ring = powerrune.getHitRingForBoard(powerrune.selectedBoardIndex());
-  powerrune.activated_arms = detectActivatedArms(fanblades);
-  powerrune.energy_type = energy_type_;
-  powerrune.timestamp = cv::getTickCount() / cv::getTickFrequency();
-  std::optional<PowerRune> P;
-  P.emplace(powerrune);
   return P;
 }
 
@@ -613,89 +373,6 @@ void Buff_Detector::fillBoardMetadata(
     const auto & rect = results[best_result].rect;
     powerrune.board_areas[board_index] = static_cast<double>(rect.width) * rect.height;
   }
-}
-
-size_t Buff_Detector::getTargetCount() const
-{
-  if (!last_powerrune_.has_value()) return 0;
-  return last_powerrune_.value().fanblades.size();
-}
-
-cv::Point2f Buff_Detector::getTargetCenter(int index) const
-{
-  if (!last_powerrune_.has_value()) return cv::Point2f(0, 0);
-  const auto & powerrune = last_powerrune_.value();
-  if (index < 0 || index >= static_cast<int>(powerrune.fanblades.size())) {
-    return cv::Point2f(0, 0);
-  }
-  return powerrune.fanblades[index].center;
-}
-
-std::vector<cv::Point2f> Buff_Detector::getAllTargetCenters() const
-{
-  std::vector<cv::Point2f> centers;
-  if (!last_powerrune_.has_value()) return centers;
-  const auto & powerrune = last_powerrune_.value();
-  for (const auto & blade : powerrune.fanblades) {
-    centers.push_back(blade.center);
-  }
-  return centers;
-}
-
-std::vector<double> Buff_Detector::getAllConfidences() const
-{
-  if (!last_powerrune_.has_value()) return {};
-  return last_powerrune_->board_confidences;
-}
-
-std::vector<double> Buff_Detector::getAllDistances() const
-{
-  std::vector<double> distances;
-  if (!last_powerrune_.has_value()) return distances;
-  const auto & powerrune = last_powerrune_.value();
-  double current_distance = powerrune.ypd_in_world[2];
-  size_t target_count = powerrune.fanblades.size();
-  distances.assign(target_count, current_distance);
-  return distances;
-}
-
-std::vector<double> Buff_Detector::getAllAngularVelocities() const
-{
-  std::vector<double> velocities;
-  size_t target_count = getTargetCount();
-  if (target_ != nullptr && !target_->is_unsolve()) {
-    Eigen::VectorXd x = target_->ekf_x();
-    double speed_rad = 3.0;
-    if (energy_type_ == EnergyType::SMALL) {
-      if (x.size() > 6) {
-        speed_rad = std::abs(x[6]);
-      } else if (x.size() > 5) {
-        speed_rad = std::abs(x[5]);
-      }
-    } else if (x.size() > 6) {
-      speed_rad = std::abs(x[6]);
-    }
-    if (speed_rad < 0.5 || speed_rad > 12.0) {
-      speed_rad = 3.0;
-    }
-    velocities.assign(target_count, speed_rad);
-  } else {
-    double default_speed = (energy_type_ == EnergyType::SMALL) ? 1.05 : 3.0;
-    velocities.assign(target_count, default_speed);
-  }
-  return velocities;
-}
-
-std::vector<int> Buff_Detector::getAllTrackedFrames() const
-{
-  if (!last_powerrune_.has_value()) return {};
-  return last_powerrune_->board_tracked_frames;
-}
-
-std::vector<double> Buff_Detector::getAllAreas() const
-{
-  if (!last_powerrune_.has_value()) return {};
-  return last_powerrune_->board_areas;
 }
 
 }  // namespace auto_buff
