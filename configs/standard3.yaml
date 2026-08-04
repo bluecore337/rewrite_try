@@ -1,5 +1,5 @@
-enemy_color: "red"
-# enemy_color: "blue"
+# enemy_color: "red"
+enemy_color: "blue"
 
 #####-----神经网络参数-----#####
 yolo_name: yolov5
@@ -37,15 +37,15 @@ min_detect_count: 5
 max_temp_lost_count: 15
 outpost_max_temp_lost_count: 75
 
-#####-----aimer参数-----#####
-yaw_offset: 0.55 # degree
+#####-----aimer参数-----#####q
+yaw_offset: 0.47 # degree
 pitch_offset: -0.95 # degree
 comming_angle: 60 # degree
 leaving_angle: 20 # degree
 decision_speed: 7 # rad/s
 resistance_k: 0.000
 high_speed_delay_time: 0.010 # s
-low_speed_delay_time: 0.006 # s
+low_speed_delay_time: 0.009 # s
 
 #####-----shooter参数-----##### 
 auto_fire: true # 是否由自瞄控制射击
@@ -63,24 +63,24 @@ high_spin_force_fire_enter_speed: 16.0 # rad/s
 high_spin_force_fire_exit_speed: 12 # rad/s
 
 camera_name: "hikrobot"
-exposure_ms: 2
-gain: 16
+exposure_ms: 1.8
+gain: 14
 vid_pid: "2bdf:0001"
 
 R_gimbal2imubody: [1, 0, 0, 0, 1, 0,  0, 0, 1]
 
-# 重投影误差: 0.1014px
-camera_matrix: [1806.2119658999263, 0, 688.01128029975666, 0, 1804.8969824154915, 546.91192157432477, 0, 0, 1]
-distort_coeffs: [-0.086265587886552531, 0.2192678695593957, 0.00020619282623097731, -0.0014628061486508112, 0]
+# 重投影误差: 0.0913px
+camera_matrix: [1823.9963993419956, 0, 711.09463943585467, 0, 1826.2857680471473, 542.72405068229602, 0, 0, 1]
+distort_coeffs: [-0.084184390952579208, 0.22930994117456757, 1.0388259828447162e-05, 0.00079329515085383871, 0]
 
 #python3 euler_to_matrix.py --yaw 0.45 --pitch 1.3 --roll 0 --ascento
-# 相机同理想情况的偏角: yaw-2.18 pitch-1.53 roll2.86 degree
+# 相机同理想情况的偏角: yaw-1.48 pitch-1.09 roll2.43 degree
 R_camera2gimbal: [-0.0078539008887113342, 0.022686633841980532, 0.9997117749060227,
  -0.99996915764478966, -0.00017818406930975798, -0.0078518793678421291,
  -0, -0.99974260932269832, 0.022687333572781358]
 
-# t_camera2gimbal: [0.03982646092549033, 0.0076868180549131771, 0.062028855872829795]
-t_camera2gimbal: [0.0915, 0, 0.085] # 前后/左右/上下
+# t_camera2gimbal: [0.06521841254429836, -0.0023919863423267963, 0.086964699970889861]
+t_camera2gimbal: [0.0915, -0.0011477414625710339, 0.085] # 前后/左右/上下
 # 这个数据建议直接找机械给，标定程序准确度不会太好
 
 #####-----时序参数-----#####
@@ -99,17 +99,18 @@ com_port: "/dev/gimbal"
 #####-----buff_detector参数-----#####
 model: "assets/yolo11-buff-nano-v4.xml"
 small_buff_model: "assets/yolo11_buff_int8.xml"
-big_buff_model: "assets/yolo11-buff-nano-v4.xml"
+big_buff_model: "assets/yolo11-buff-nano-v7.xml"
 
 #####-----buff_aimer参数-----#####
 aim_mode: "arm" #arm / ring
 fire_gap_time: 0.80   # s
-predict_time: 0.100   # s
+predict_time: 0.095   # s
 yaw_offset_buff: 0.5
 pitch_offset_buff: -1.5
 
 #####-----planner-----#####
 fire_thresh: 0.67 # 这是默认阈值, degree
+traj_g: 8.6333
 
 is_multiple_offset: false
 planner_offset_distance:   [4.2,  100]
@@ -120,7 +121,7 @@ planner_offset_pitch: [-0.95, -0.95]
 
 is_multiple_thresh: true
 planner_judge_distance: [0.90, 1.50, 1.90, 2.30, 2.80, 3.50, 4.20, 5.00, 100]
-planner_fire_thresh: [6.00, 3.70, 2.20, 1.70, 0.67, 0.45, 0.27, 0.13, 0.10] # degree
+planner_fire_thresh: [9.00, 4.20, 3.00, 1.90, 0.72, 0.45, 0.27, 0.13, 0.10] # degree
 # 仿照(其实是抄doge)之前的距离容差设计，分距离使用不同的阈值
 # 若距离大于judge_distance_for_planner的最后一位，则使用最后一位的阈值
 

@@ -312,15 +312,11 @@ std::optional<PowerRune> Buff_Detector::detect(cv::Mat & bgr_img)
 
 void Buff_Detector::updateDetectionInfo(const std::vector<YOLO11_BUFF::Object> & results)
 {
-  std::vector<double> confidences;
-  std::vector<cv::Rect> bboxes;
   std::vector<cv::Point2f> centers;
   std::vector<int> track_counts(results.size(), 1);
   std::vector<bool> prev_used(last_detection_centers_.size(), false);
   for (size_t i = 0; i < results.size(); ++i) {
     const auto & result = results[i];
-    confidences.push_back(result.confidence);
-    bboxes.push_back(result.rect);
     centers.push_back(result.kpt[4]);
     float best_distance = std::numeric_limits<float>::max();
     int best_prev = -1;
@@ -339,8 +335,6 @@ void Buff_Detector::updateDetectionInfo(const std::vector<YOLO11_BUFF::Object> &
       track_counts[i] = std::min(MAX_TRACK_COUNT, target_track_counts_[best_prev] + 1);
     }
   }
-  last_confidences_ = std::move(confidences);
-  last_bboxes_ = std::move(bboxes);
   last_detection_centers_ = std::move(centers);
   target_track_counts_ = std::move(track_counts);
 }

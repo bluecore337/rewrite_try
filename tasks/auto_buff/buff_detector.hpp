@@ -80,8 +80,6 @@ private:
 
   EnergyType energy_type_;
 
-  std::vector<double> last_confidences_;
-  std::vector<cv::Rect> last_bboxes_;
   std::vector<cv::Point2f> last_detection_centers_;
   std::vector<int> target_track_counts_;
   static constexpr int MAX_TRACK_COUNT = 100;

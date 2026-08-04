@@ -7,8 +7,8 @@
 #include "tools/logger.hpp"
 #include "tools/yaml.hpp"
 
-const double ConfidenceThreshold = 0.30f; // 置信度阈值，低于这个置信度则忽略目标
-const double IouThreshold = 0.80f; // 交并比(IoU)阈值，高于这个阈值的两个框视为高度重叠
+const double CONFIDENCE_THRESH = 0.40f; // 置信度阈值，低于这个置信度则忽略目标
+const double IOU_THRESH = 0.60f; // 交并比(IoU)阈值，高于这个阈值的两个框视为高度重叠
 
 namespace {
 std::string shape_to_string(const ov::Shape & shape) {
@@ -34,12 +34,14 @@ std::string YOLO11_BUFF::get_mode_path(const YAML::Node & yaml, const std::strin
 
 YOLO11_BUFF::YOLO11_BUFF(const std::string & config_path, const std::string & model_key) {
     auto yaml = tools::load(config_path);
+    if (yaml["draw_buff"]) is_draw_info_ = yaml["draw_buff"].as<bool>();
     model_path_ = get_mode_path(yaml, model_key);
     
     model = core.read_model(model_path_);
-    compiled_model = core.compile_model(model, "CPU");
-    infer_request_ = compiled_model.create_infer_request();
-    input_tensor_ = infer_request_.get_input_tensor();
+    // printInputAndOutputsInfo(*model);  // 打印模型信息
+    compiled_model = core.compile_model(model, "CPU"); // 载入并编译模型
+    infer_request_ = compiled_model.create_infer_request(); // 创建推理请求
+    input_tensor_ = infer_request_.get_input_tensor(); // 获取模型输入节点
     input_tensor_.set_shape({1, 3, 640, 640});
     tools::logger()->info("[YOLO11_BUFF] loaded model: {}", model_path_);
 }
@@ -52,12 +54,12 @@ std::vector<YOLO11_BUFF::Object> YOLO11_BUFF::get_candidateboxes(cv::Mat & image
     }
     const int64 start = cv::getTickCount();
     //--- 写入、推理、获取输出层 ---
-    const float scale_factor = FillInputTensor(image);
+    const float scale_factor = fillInputTensor(image);
     infer_request_.infer();
     const ov::Tensor output = infer_request_.get_output_tensor();
 
     //--- 读取和筛选目标 ---
-    const auto candidates = GetCandidates(output, scale_factor);
+    const auto candidates = getCandidates(output, scale_factor);
     std::vector<cv::Rect> boxes; // 候选框列表
     std::vector<float> confidences; // 对应的置信度
     boxes.reserve(candidates.size());
@@ -67,8 +69,8 @@ std::vector<YOLO11_BUFF::Object> YOLO11_BUFF::get_candidateboxes(cv::Mat & image
         confidences.push_back(candidate.confidence);
     }
     std::vector<int> indexes; // 存储保留的候选框的索引
-    cv::dnn::NMSBoxes(boxes, confidences, ConfidenceThreshold, IouThreshold, indexes);
-        // 筛选出置信度大于ConfidenceThreshold的框，并根据交并比去除高度重合的框。
+    cv::dnn::NMSBoxes(boxes, confidences, CONFIDENCE_THRESH, IOU_THRESH, indexes);
+        // 筛选出置信度大于CONFIDENCE_THRESH的框，并根据交并比去除高度重合的框。
 
     //--- 写入结果并返回 ---
     std::vector<Object> object_result;
@@ -89,14 +91,14 @@ void YOLO11_BUFF::convert(const cv::Mat & input, cv::Mat & output){
     cv::cvtColor(output, output, cv::COLOR_BGR2RGB); // opencv存储图像是BGR，而openvino需要RGB图像
 }
 
-float YOLO11_BUFF::FillInputTensor(const cv::Mat & input_image) {
+float YOLO11_BUFF::fillInputTensor(const cv::Mat & input_image) {
     //--- 计算缩放比例 scale ---
     const ov::Shape tensor_shape = input_tensor_.get_shape(); // [1,3,640,640]
     const size_t num_channels = tensor_shape[1]; // 3，即三个颜色通道BGR
     const size_t height = tensor_shape[2];       // 输入图像高度
     const size_t width = tensor_shape[3];        // 输入图像宽度
     const float scale = std::min(height / float(input_image.rows), width / float(input_image.cols));
-        // scale 是缩放倍数的倒数
+        // scale 是缩放倍数的倒数。使用倒数的原因需要看下文和了解 cv::warpAffine(...) 函数。
 
     //--- 进行图片缩放和转换 ---
     // 由于转换convert中有除法，减少convert中处理的像素数量可以降低算力开支。
@@ -129,7 +131,7 @@ float YOLO11_BUFF::FillInputTensor(const cv::Mat & input_image) {
 }
 
 //=== 读取输出层数据 ===
-std::optional<YOLO11_BUFF::OutputLayout> YOLO11_BUFF::CheckOutputLayout(const ov::Shape & shape) {
+std::optional<YOLO11_BUFF::OutputLayout> YOLO11_BUFF::checkOutputLayout(const ov::Shape & shape) {
     if (shape.size() != 3 || shape[0] != 1) {
         tools::logger()->warn("[YOLO11_BUFF] unsupported output shape: {}", shape_to_string(shape));
         return std::nullopt;
@@ -176,15 +178,15 @@ float YOLO11_BUFF::outputAt(const float * data,
   return data[candidate * layout.channels + channel];
 }
 
-std::vector<YOLO11_BUFF::Object> YOLO11_BUFF::GetCandidates(const ov::Tensor & output, float factor) {
-    const auto layout = CheckOutputLayout(output.get_shape());
+std::vector<YOLO11_BUFF::Object> YOLO11_BUFF::getCandidates(const ov::Tensor & output, float factor) {
+    const auto layout = checkOutputLayout(output.get_shape());
     if (!layout.has_value()) return {};
 
     std::vector<Object> candidates;
     const float * output_buffer = output.data<const float>();
     for (int i = 0; i < layout->candidates; ++i) {
         const float score = outputAt(output_buffer, *layout, 4, i);
-        if (score <= ConfidenceThreshold) continue;
+        if (score <= CONFIDENCE_THRESH) continue;
 
         const float cx = outputAt(output_buffer, *layout, 0, i);
         const float cy = outputAt(output_buffer, *layout, 1, i);
@@ -210,7 +212,7 @@ std::vector<YOLO11_BUFF::Object> YOLO11_BUFF::GetCandidates(const ov::Tensor & o
     return candidates;
 }
 
-//=== 画图 ===
+//=== 调试用：画图 ===
 void YOLO11_BUFF::drawObject(cv::Mat & image, 
     const Object & obj, const cv::Scalar & point_color) const {
     cv::rectangle(image, obj.rect, cv::Scalar(255, 255, 255), 1, 8);
@@ -228,4 +230,36 @@ void YOLO11_BUFF::drawObject(cv::Mat & image,
     }
 }
 
+//=== 调试用：打印模型信息（从sp_vision复制来的） ===
+void YOLO11_BUFF::printInputAndOutputsInfo(const ov::Model & network) {
+  std::cout << "model name: " << network.get_friendly_name() << std::endl;
+
+  const std::vector<ov::Output<const ov::Node>> inputs = network.inputs();
+  for (const ov::Output<const ov::Node> & input : inputs) {
+    std::cout << "    inputs" << std::endl;
+
+    const std::string name = input.get_names().empty() ? "NONE" : input.get_any_name();
+    std::cout << "        input name: " << name << std::endl;
+
+    const ov::element::Type type = input.get_element_type();
+    std::cout << "        input type: " << type << std::endl;
+
+    const ov::Shape shape = input.get_shape();
+    std::cout << "        input shape: " << shape << std::endl;
+  }
+
+  const std::vector<ov::Output<const ov::Node>> outputs = network.outputs();
+  for (const ov::Output<const ov::Node> & output : outputs) {
+    std::cout << "    outputs" << std::endl;
+
+    const std::string name = output.get_names().empty() ? "NONE" : output.get_any_name();
+    std::cout << "        output name: " << name << std::endl;
+
+    const ov::element::Type type = output.get_element_type();
+    std::cout << "        output type: " << type << std::endl;
+
+    const ov::Shape shape = output.get_shape();
+    std::cout << "        output shape: " << shape << std::endl;
+  }
 }
+} // namespace auto_buff

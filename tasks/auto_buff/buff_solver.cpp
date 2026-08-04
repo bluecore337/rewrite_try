@@ -10,22 +10,6 @@ cv::Matx33f Solver::rotation_matrix(double angle) const
     1, 0, 0, 0, std::cos(angle), -std::sin(angle), 0, std::sin(angle), std::cos(angle));
 }
 
-void Solver::compute_rotated_points(std::vector<std::vector<cv::Point3f>> & object_points)
-{
-  const std::vector<cv::Point3f> & base_points = object_points[0];
-  for (int i = 1; i < 5; ++i) {
-    double angle = i * THETA;
-    cv::Matx33f R = rotation_matrix(angle);
-    std::vector<cv::Point3f> rotated_points;
-    for (const auto & point : base_points) {
-      cv::Vec3f vec(point.x, point.y, point.z);
-      cv::Vec3f rotated_vec = R * vec;
-      rotated_points.emplace_back(rotated_vec[0], rotated_vec[1], rotated_vec[2]);
-    }
-    object_points[i] = rotated_points;
-  }
-}
-
 Solver::Solver(const std::string & config_path)
   : R_gimbal2world_(Eigen::Matrix3d::Identity()),
     energy_type_(EnergyType::SMALL),
@@ -92,38 +76,6 @@ void Solver::setEnergyType(EnergyType type)
     generateRandomParam();
   } else if (type == EnergyType::SMALL) {
     param_fixed_ = false;
-  }
-}
-
-double Solver::getCurrentSpeed(double current_time) const
-{
-  if (energy_type_ == EnergyType::SMALL) {
-    return CV_PI / 3.0;
-  } else {
-    if (!param_fixed_) {
-      return CV_PI / 3.0;
-    }
-    double t = current_time - activation_time_;
-    if (t < 0) t = 0;
-    return sinusoidal_param_.getSpeed(t);
-  }
-}
-
-double Solver::predictAngle(double start_angle, double current_time) const
-{
-  if (energy_type_ == EnergyType::SMALL) {
-    double dt = current_time - activation_time_;
-    if (dt < 0) dt = 0;
-    return start_angle + (CV_PI / 3.0) * dt;
-  } else {
-    if (!param_fixed_) {
-      double dt = current_time - activation_time_;
-      if (dt < 0) dt = 0;
-      return start_angle + (CV_PI / 3.0) * dt;
-    }
-    double t = current_time - activation_time_;
-    if (t < 0) t = 0;
-    return sinusoidal_param_.getAngle(start_angle, t);
   }
 }
 

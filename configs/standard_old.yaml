@@ -1,5 +1,5 @@
-enemy_color: "red"
-# enemy_color: "blue"
+# enemy_color: "red"
+enemy_color: "blue"
 
 #####-----神经网络参数-----#####
 yolo_name: yolov5
@@ -43,8 +43,8 @@ pitch_offset: -0.6 # degree
 comming_angle: 60 # degree
 leaving_angle: 20 # degree
 decision_speed: 7 # rad/s
-resistance_k: 0.0001
-high_speed_delay_time: 0.013 # s
+resistance_k: 0
+high_speed_delay_time: 0.011 # s
 low_speed_delay_time: 0.010 # s
 
 #####-----shooter参数-----##### 
@@ -63,8 +63,8 @@ high_spin_force_fire_enter_speed: 16.0 # rad/s
 high_spin_force_fire_exit_speed: 12 # rad/s
 
 camera_name: "hikrobot"
-exposure_ms: 2
-gain: 16
+exposure_ms: 1.8
+gain: 14
 vid_pid: "2bdf:0001"
 
 R_gimbal2imubody: [1, 0, 0, 0, 1, 0,  0, 0, 1]
@@ -79,7 +79,7 @@ R_camera2gimbal: [-0.0043633092847465711, 0.029665961683848552, 0.99955034502993
  -0.99999048072073449, -0.00012944299826012182, -0.0043613888183188917,
  -0, -0.99955986011938402, 0.029666244085110757]
 
-t_camera2gimbal: [0.088, 0, 0.0705] # 前后/左右/上下
+t_camera2gimbal: [0.098, -0.0030608725157624693, 0.0705] # 前后/左右/上下
 # 这个数据建议直接找机械给，标定程序准确度不会太好
 
 #####-----时序参数-----#####
@@ -98,7 +98,7 @@ com_port: "/dev/gimbal"
 #####-----buff_detector参数-----#####
 model: "assets/yolo11_buff_int8.xml"
 small_buff_model: "assets/yolo11_buff_int8.xml"
-big_buff_model: "assets/yolo11-buff-nano-v4.xml"
+big_buff_model: "assets/yolo11-buff-nano-v7.xml"
 
 #####-----buff_aimer参数-----#####
 aim_mode: "arm" #arm / ring
@@ -109,17 +109,18 @@ pitch_offset_buff: -1
 
 #####-----planner-----#####
 fire_thresh: 0.55 # 这是默认阈值, degree
+traj_g: 8.6333
 
-is_multiple_offset: false # 仅作为临时补救方案，效果不是很好
-planner_offset_distance:   [100]
-planner_offset_yaw:   [ 0.2]
-planner_offset_pitch: [-0.60]
-# 远距离时，可能是由于重力加速度不准确或者标定不准确，会打不准
-# 所以在远距离时使用不同的 offset 以尝试减轻这个影响
+is_multiple_offset: true # 仅作为临时补救方再
+planner_offset_distance:   [1.50, 100]
+planner_offset_yaw:   [0.20 , 0.20 ]
+planner_offset_pitch: [-0.30, -0.60]
+# 有时因为一些未知或是难以修改（比如t_camera2gimbal有轻微不准），导致打的不准
+# 这里可以细化不同距离的 offset 参数以临时削减上述不准的影响。
 
 is_multiple_thresh: true
 planner_judge_distance: [0.90, 1.50, 1.90, 2.30, 2.80, 3.50, 4.20, 5.00, 100]
-planner_fire_thresh: [6.20, 3.70, 2.00, 1.45, 0.50, 0.42, 0.27, 0.20, 0.08] # degree
+planner_fire_thresh: [6.50, 3.20, 2.50, 1.80, 0.72, 0.45, 0.27, 0.13, 0.10] # degree
 # 仿照(其实是抄doge)之前的距离容差设计，分距离使用不同的阈值
 # 若距离大于judge_distance_for_planner的最后一位，则使用最后一位阈值
 
