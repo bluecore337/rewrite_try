@@ -59,7 +59,7 @@ void RansacSineFitter::fit() {
         }
     }
     
-    if (fit_data_.size() > 150) fit_data_.pop_front();
+    if (data_.size() > 150) data_.pop_front();
 }
 bool RansacSineFitter::fit_partial_model(
     const std::vector<std::pair<double, double>> & sample, 

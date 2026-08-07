@@ -69,9 +69,14 @@ public:
 class PowerRune
 {
 public:
-  cv::Point2f r_center;
-  std::vector<FanBlade> fanblades;
-  int light_num;
+  cv::Point2f r_center;              // 旋转中心（R标中心）
+  std::vector<FanBlade> fanblades;   // 所有扇叶
+  int light_num;                     // 亮灯扇叶数
+  
+  // R 标相关
+  cv::Point2f r_center_pixel;        // R标中心（像素坐标）
+  std::vector<cv::Point2f> r_corners; // R标四个角点（像素坐标）
+  bool has_r_mark = false;           // 是否检测到 R 标
 
   Eigen::Vector3d xyz_in_world;
   Eigen::Vector3d ypr_in_world;

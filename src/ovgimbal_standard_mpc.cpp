@@ -130,7 +130,6 @@ int main(int argc, char * argv[])
     recorder.record(img, q ,timestamp);
 
     io::Command command{false, false, 0.0, 0.0};
-    io::Command last_command{false, false, 0.0, 0.0};
 
     if (mode == io::AutoAimMode::normal || mode == io::AutoAimMode::anti_top
          || mode == io::AutoAimMode::outpost) {
@@ -191,8 +190,8 @@ int main(int argc, char * argv[])
       if (energy_type == auto_buff::EnergyType::SMALL) {
         small_target->get_target(power_runes, timestamp, energy_type, nullptr);
         if (!small_target->is_unsolve()) {
-          command = buff_aimer.aim(*small_target, timestamp, gimbal.bullet_speed(), true);
-          command.shoot = false;
+          command = buff_aimer.aimWithMode(
+            *small_target, timestamp, gimbal.bullet_speed(), auto_buff::AimMode::ARM_PRIORITY, 10, true);
         }
       } else {
         std::optional<auto_buff::PowerRune> tracking_power_runes = std::nullopt;
@@ -205,7 +204,8 @@ int main(int argc, char * argv[])
         auto sin_param = buff_solver.getSinusoidalParam();
         big_target->get_target(tracking_power_runes, timestamp, energy_type, &sin_param);
         if (!big_target->is_unsolve()) {
-          command = buff_aimer.aim(*big_target, timestamp, gimbal.bullet_speed(), true);
+          command = buff_aimer.aimWithMode(
+            *big_target, timestamp, gimbal.bullet_speed(), auto_buff::AimMode::ARM_PRIORITY, 10, true);
           command.shoot = false;
         }
       }
@@ -213,11 +213,10 @@ int main(int argc, char * argv[])
       gimbal.send(
         command.control, command.shoot, static_cast<float>(command.yaw*57.3),
         static_cast<float>(command.pitch*57.3), 0.0f, 0.0f, 0.0f, 0.0f);
-      last_command = command;
       } else {
       gimbal.send(
-        false, false, static_cast<float>(last_command.yaw*57.3),
-        static_cast<float>(last_command.pitch*57.3), 0.0f, 0.0f, 0.0f, 0.0f);
+        false, false, static_cast<float>(command.yaw*57.3),
+        static_cast<float>(command.pitch*57.3), 0.0f, 0.0f, 0.0f, 0.0f);
       // gimbal.send(false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
     }
   }

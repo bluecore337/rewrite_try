@@ -11,7 +11,6 @@ add_library(auto_buff OBJECT
     buff_aimer.cpp
     buff_target.cpp
     yolo11_buff.cpp
-    target_prioritizer.cpp
 )
 
 target_link_libraries(auto_buff auto_aim openvino::runtime ${CERES_LIBRARIES})

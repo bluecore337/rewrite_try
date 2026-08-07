@@ -30,6 +30,14 @@ public:
 
   void setEnergyType(EnergyType type);
   const SinusoidalParam & getSinusoidalParam() const { return sinusoidal_param_; }
+  double getAMin() const { return a_min_; }
+  double getAMax() const { return a_max_; }
+  double getOmegaMin() const { return omega_min_; }
+  double getOmegaMax() const { return omega_max_; }
+  double getBBase() const { return b_base_; }
+  double getCurrentSpeed(double current_time) const;
+  double predictAngle(double start_angle, double current_time) const;
+  double getActivationTime() const { return activation_time_; }
 
 private:
   cv::Mat camera_matrix_;
@@ -61,6 +69,7 @@ private:
   void loadConfig(const YAML::Node & config);
   void generateRandomParam();
   cv::Matx33f rotation_matrix(double angle) const;
+  void compute_rotated_points(std::vector<std::vector<cv::Point3f>> & object_points);
 };
 }  // namespace auto_buff
 #endif  // AUTO_AIM__SOLVER_HPP

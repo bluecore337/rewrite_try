@@ -195,9 +195,6 @@ void SmallTarget::init(double nowtime, const PowerRune & p)
 
 void SmallTarget::update(double nowtime, const PowerRune & p)
 {
-  // if (nowtime - lasttime_ < 0 || nowtime - lasttime_ > 0.15 )
-  //   tools::logger()->warn("[SmallTarget] Camera timestamp error! dt = {:.2f}", nowtime - lasttime_);
-  //调试：检查相机时间戳间隔
   const Eigen::VectorXd & R_ypd = p.ypd_in_world;
   const Eigen::VectorXd & ypr = p.ypr_in_world;
   const Eigen::VectorXd & B_ypd = p.blade_ypd_in_world;
@@ -227,6 +224,7 @@ void SmallTarget::update(double nowtime, const PowerRune & p)
   H1 << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
     1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0;
 
+  // 自适应测量噪声：根据残差大小调整（残差大→噪声大→信任度降低）
   Eigen::MatrixXd R1(4, 4);
   R1 << 0.02, 0.0, 0.0, 0.0, 0.0, 0.02, 0.0, 0.0, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.15;
 
@@ -240,6 +238,18 @@ void SmallTarget::update(double nowtime, const PowerRune & p)
 
   Eigen::VectorXd z1(4);
   z1 << R_ypd[0], R_ypd[1], R_ypd[2], ypr[2];
+
+  // 残差检查：预测值与测量值的偏差过大时拒绝更新（异常值剔除）
+  Eigen::VectorXd pred_meas(4);
+  pred_meas << ekf_.x[0], ekf_.x[2], ekf_.x[3], ekf_.x[5];
+  Eigen::VectorXd innov = z_subtract1(z1, pred_meas);
+  double nis = 0;
+  for (int i = 0; i < 4; i++) nis += (innov[i] * innov[i]) / R1(i, i);
+  // NIS > 12 (卡方4自由度99%阈值) 说明测量异常，用自适应噪声
+  if (nis > 12.0) {
+    R1 *= 10.0;  // 增大测量噪声，降低该帧权重
+  }
+
   ekf_.update(z1, H1, R1, z_subtract1);
   if (!hasFiniteState()) {
     unsolvable_ = true;
@@ -250,6 +260,7 @@ void SmallTarget::update(double nowtime, const PowerRune & p)
 
   Eigen::MatrixXd H2 = h_jacobian();
 
+  // 二次更新也加自适应噪声
   Eigen::MatrixXd R2(3, 3);
   R2 << 0.02, 0.0, 0.0, 0.0, 0.02, 0.0, 0.0, 0.0, 0.3;
 
