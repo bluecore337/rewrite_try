@@ -20,6 +20,7 @@ Planner::Planner(const std::string & config_path)
   high_speed_delay_time_ = tools::read<double>(yaml, "high_speed_delay_time");
   low_speed_delay_time_ = tools::read<double>(yaml, "low_speed_delay_time");
   resistance_k_ = tools::read<double>(yaml,"resistance_k");
+  traj_g_ = tools::read<double>(yaml,"traj_g");
 
   // 不同距离时调整offset
   is_multiple_offset_ = tools::read<bool>(yaml, "is_multiple_offset");
@@ -71,7 +72,7 @@ Plan Planner::plan(Target target, double bullet_speed)
       xyz = xyza.head<3>();
     }
   }
-  auto bullet_traj = tools::Trajectory(bullet_speed, min_dist, xyz.z(), resistance_k_);
+  auto bullet_traj = tools::Trajectory(bullet_speed, min_dist, xyz.z(), resistance_k_, traj_g_);
   target.predict(bullet_traj.fly_time);
 
   // 2. Get trajectory
@@ -81,7 +82,7 @@ Plan Planner::plan(Target target, double bullet_speed)
     yaw0 = aim(target, bullet_speed)(0);
     traj = get_trajectory(target, yaw0, bullet_speed);
   } catch (const std::exception & e) {
-    tools::logger()->warn("Unsolvable target {:.2f}", bullet_speed);
+    tools::logger()->warn("Unsolvable target {:.2f}, e = {}", bullet_speed, e.what());
     return {false};
   }
 
@@ -207,7 +208,7 @@ Eigen::Matrix<double, 2, 1> Planner::aim(const Target & target, double bullet_sp
   debug_xyza = Eigen::Vector4d(xyz.x(), xyz.y(), xyz.z(), yaw);
 
   auto azim = std::atan2(xyz.y(), xyz.x());
-  auto bullet_traj = tools::Trajectory(bullet_speed, min_dist, xyz.z(), resistance_k_);
+  auto bullet_traj = tools::Trajectory(bullet_speed, min_dist, xyz.z(), resistance_k_, traj_g_);
   if (bullet_traj.unsolvable) throw std::runtime_error("Unsolvable bullet trajectory!");
 
   // 不同距离时调整offset

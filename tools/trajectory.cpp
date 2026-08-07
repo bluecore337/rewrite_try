@@ -4,9 +4,8 @@
 
 namespace tools
 {
-constexpr double g = 8.6333;
 
-static double resistance_residual(double theta, double v0, double d, double h, double k)
+static double resistance_residual(double theta, double v0, double d, double h, double k, double g)
 {
   double ct = std::cos(theta);
   double st = std::sin(theta);
@@ -26,7 +25,7 @@ static double resistance_fly_time(double theta, double v0, double d, double k)
   return -std::log(1.0 - ratio) / k;
 }
 
-Trajectory::Trajectory(double v0, double d, double h, double k)
+Trajectory::Trajectory(double v0, double d, double h, double k, double g)
 {
   if (k < 1e-6) {
     auto a = g * d * d / (2 * v0 * v0);
@@ -77,12 +76,12 @@ Trajectory::Trajectory(double v0, double d, double h, double k)
   bool solved = false;
 
   for (int i = 0; i < max_iter; ++i) {
-    double r = resistance_residual(theta, v0, d, h, k);
+    double r = resistance_residual(theta, v0, d, h, k, g);
     if (std::abs(r) < 1e-6) {
       solved = true;
       break;
     }
-    double r_plus = resistance_residual(theta + eps, v0, d, h, k);
+    double r_plus = resistance_residual(theta + eps, v0, d, h, k, g);
     double dr = (r_plus - r) / eps;
     if (std::abs(dr) < 1e-12) break;
     theta -= r / dr;
@@ -90,7 +89,7 @@ Trajectory::Trajectory(double v0, double d, double h, double k)
   }
 
   if (!solved) {
-    double r = resistance_residual(theta, v0, d, h, k);
+    double r = resistance_residual(theta, v0, d, h, k, g);
     solved = std::abs(r) < 0.01;
   }
 

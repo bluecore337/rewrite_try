@@ -14,7 +14,7 @@ struct Trajectory
   // d 鐩爣姘村钩璺濈锛屽崟浣嶏細m
   // h 鐩爣绔栫洿楂樺害锛屽崟浣嶏細
   // k 绌烘皵闃诲姏绯绘暟锛堥粯璁?0.01锛?
-  Trajectory(double v0, double d, double h, double k = 1e-3);
+  Trajectory(double v0, double d, double h, double k = 1e-3, double g = 9.6333);
 };
 
 }  // namespace tools

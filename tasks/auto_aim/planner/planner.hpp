@@ -46,6 +46,7 @@ private:
   double low_speed_delay_time_, high_speed_delay_time_, decision_speed_;
   double resistance_k_;
   double last_yaw_ = 0;
+  double traj_g_;
 
   bool is_multiple_offset_ = false;
   std::vector<double> planner_offset_distance_;
