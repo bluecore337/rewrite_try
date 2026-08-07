@@ -11,8 +11,8 @@ Aimer::Aimer(const std::string & config_path)
 {
   auto yaml = YAML::LoadFile(config_path);
 
-  yaw_offset_ = yaml["yaw_offset-auto_buff"].as<double>() / 57.3;
-  pitch_offset_ = yaml["pitch_offset-auto_buff"].as<double>() / 57.3;
+  yaw_offset_ = yaml["yaw_offset_buff"].as<double>() / 57.3;
+  pitch_offset_ = yaml["pitch_offset_buff"].as<double>() / 57.3;
   fire_gap_time_ = yaml["fire_gap_time"].as<double>();
   predict_time_ = yaml["predict_time"].as<double>();
 

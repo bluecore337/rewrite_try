@@ -34,7 +34,7 @@ std::string YOLO11_BUFF::get_mode_path(const YAML::Node & yaml, const std::strin
 
 YOLO11_BUFF::YOLO11_BUFF(const std::string & config_path, const std::string & model_key) {
     auto yaml = tools::load(config_path);
-    if (yaml["draw_buff"]) is_draw_info_ = yaml["draw_buff"].as<bool>();
+    if (yaml["draw_buff"]) is_draw_info_ = yaml["draw_buff"].as<bool>(true);
     model_path_ = get_mode_path(yaml, model_key);
     
     model = core.read_model(model_path_);
