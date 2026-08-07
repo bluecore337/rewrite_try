@@ -97,9 +97,9 @@ can_interface: "can0"
 com_port: "/dev/gimbal"
 
 #####-----buff_detector参数-----#####
-model: "assets/yolo11-buff-nano-v4.xml"
+model: "assets/yolo11-buff-nano-v8_mix.xml"
 small_buff_model: "assets/yolo11_buff_int8.xml"
-big_buff_model: "assets/yolo11-buff-nano-v7.xml"
+big_buff_model: "assets/yolo11-buff-nano-v8_mix.xml"
 
 #####-----buff_aimer参数-----#####
 aim_mode: "arm" #arm / ring

@@ -46,6 +46,7 @@ const std::unordered_map<auto_aim::ArmorName, uint8_t> armor_name2num = {
   {auto_aim::ArmorName::two, 2},
   {auto_aim::ArmorName::three, 3},
   {auto_aim::ArmorName::four, 4},
+  {auto_aim::ArmorName::five, 0},
   {auto_aim::ArmorName::sentry, 5},
   {auto_aim::ArmorName::outpost, 6},
   {auto_aim::ArmorName::base, 7},

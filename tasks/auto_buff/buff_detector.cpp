@@ -19,92 +19,6 @@ BuffColor Buff_Detector::oppositeColor(BuffColor color)
   return color == BuffColor::RED ? BuffColor::BLUE : BuffColor::RED;
 }
 
-BuffColor Buff_Detector::classifyColor(const cv::Mat & bgr_img, const YOLO11_BUFF::Object & result)
-{
-  if (bgr_img.empty()) {
-    return BuffColor::BLUE;
-  }
-
-  std::vector<cv::Point> polygon;
-  polygon.reserve(result.kpt.size());
-  for (const auto & point : result.kpt) {
-    const int x = std::clamp(static_cast<int>(std::lround(point.x)), 0, bgr_img.cols - 1);
-    const int y = std::clamp(static_cast<int>(std::lround(point.y)), 0, bgr_img.rows - 1);
-    polygon.emplace_back(x, y);
-  }
-
-  const cv::Rect image_rect(0, 0, bgr_img.cols, bgr_img.rows);
-  const cv::Rect result_rect(
-    static_cast<int>(std::lround(result.rect.x)),
-    static_cast<int>(std::lround(result.rect.y)),
-    static_cast<int>(std::lround(result.rect.width)),
-    static_cast<int>(std::lround(result.rect.height)));
-  cv::Rect roi = polygon.empty() ? (result_rect & image_rect) : (cv::boundingRect(polygon) & image_rect);
-  if (roi.width <= 0 || roi.height <= 0) {
-    roi = result_rect & image_rect;
-  }
-  if (roi.width <= 0 || roi.height <= 0) {
-    return BuffColor::BLUE;
-  }
-
-  cv::Mat mask = cv::Mat::zeros(roi.size(), CV_8UC1);
-  if (!polygon.empty()) {
-    std::vector<cv::Point> shifted_polygon;
-    shifted_polygon.reserve(polygon.size());
-    for (const auto & point : polygon) {
-      shifted_polygon.emplace_back(point.x - roi.x, point.y - roi.y);
-    }
-    cv::fillConvexPoly(mask, shifted_polygon, cv::Scalar(255));
-  } else {
-    mask.setTo(cv::Scalar(255));
-  }
-
-  long long red_sum = 0;
-  long long blue_sum = 0;
-  int valid_pixels = 0;
-  const cv::Mat roi_img = bgr_img(roi);
-  for (int y = 0; y < roi_img.rows; ++y) {
-    for (int x = 0; x < roi_img.cols; ++x) {
-      if (mask.at<uint8_t>(y, x) == 0) continue;
-      const auto & pixel = roi_img.at<cv::Vec3b>(y, x);
-      if (std::max(pixel[0], pixel[2]) < 80) continue;
-      blue_sum += pixel[0];
-      red_sum += pixel[2];
-      ++valid_pixels;
-    }
-  }
-
-  if (valid_pixels == 0) {
-    return BuffColor::BLUE;
-  }
-  return blue_sum > red_sum ? BuffColor::BLUE : BuffColor::RED;
-}
-
-std::vector<YOLO11_BUFF::Object> Buff_Detector::filterByConfiguredColor(
-  const cv::Mat & bgr_img, const std::vector<YOLO11_BUFF::Object> & results) const
-{
-  if (!energy_color_configured_ || results.empty()) {
-    return results;
-  }
-
-  std::vector<YOLO11_BUFF::Object> filtered;
-  filtered.reserve(results.size());
-  for (const auto & result : results) {
-    if (classifyColor(bgr_img, result) == target_energy_color_) {
-      filtered.push_back(result);
-    }
-  }
-
-  if (filtered.empty()) {
-    tools::logger()->debug(
-      "[Buff_Detector] 未筛到目标颜色 {}，回退使用全部候选 {} 个",
-      colorName(target_energy_color_), results.size());
-    return results;
-    // return filtered;
-  }
-  return filtered;
-}
-
 Buff_Detector::Buff_Detector(const std::string & config) : Buff_Detector(config, "model") {}
 
 Buff_Detector::Buff_Detector(const std::string & config, const std::string & model_key)
@@ -268,7 +182,7 @@ std::optional<PowerRune> Buff_Detector::detect(cv::Mat & bgr_img)
   auto now = std::chrono::steady_clock::now();
   const cv::Mat color_reference = bgr_img.clone();
   std::vector<YOLO11_BUFF::Object> results = MODE_.get_candidateboxes(bgr_img);
-  results = filterByConfiguredColor(color_reference, results);
+  // results = filterByConfiguredColor(color_reference, results);
   updateDetectionInfo(results);
   if (results.empty()) {
     handle_lose();

@@ -51,9 +51,6 @@ public:
 private:
   static const char * colorName(BuffColor color);
   static BuffColor oppositeColor(BuffColor color);
-  static BuffColor classifyColor(const cv::Mat & bgr_img, const YOLO11_BUFF::Object & result);
-  std::vector<YOLO11_BUFF::Object> filterByConfiguredColor(
-    const cv::Mat & bgr_img, const std::vector<YOLO11_BUFF::Object> & results) const;
 
   void handle_img(const cv::Mat & bgr_img, cv::Mat & dilated_img);
   cv::Point2f get_r_center(std::vector<FanBlade> & fanblades, cv::Mat & bgr_img);
