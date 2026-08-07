@@ -178,7 +178,7 @@ uint8_t OVGimbal::invincibility() const {
 
 //=== 发送 ===
 void OVGimbal::send(const io::Command & command) {
-    if (is_receiving_data_) return ;
+    if (!is_receiving_data_) return ;
     
     const uint8_t header = 0xAA;
     const uint8_t cmd_id = 0x81;
@@ -217,7 +217,7 @@ void OVGimbal::send(const io::Command & command) {
 }
 
 void OVGimbal::send(const io::MPCCommand & mpc_command) {
-    if (is_receiving_data_) return ;
+    if (!is_receiving_data_) return ;
 
     const uint8_t header = 0xAA;
     const uint8_t cmd_id = 0x81;
@@ -259,7 +259,7 @@ void OVGimbal::send(bool control, bool fire, float yaw, float pitch, float yaw_v
     float yaw_acc, float pitch_vel, float pitch_acc, uint8_t armor_name_num) {
     (void)control;
 
-    if (is_receiving_data_) return ;
+    if (!is_receiving_data_) return ;
     const uint8_t header = 0xAA;
     const uint8_t cmd_id = 0x81;
 
